@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitLab World — The Finance District</title>
+<style>
+  :root{
+    --gl-orange:#FC6D26; --gl-orange-deep:#E24329; --gl-amber:#FCA326;
+    --gl-purple:#6E49CB; --gl-violet:#8C4BFF;
+    --night:#160d2b; --ink:#f4eeff; --ink-dim:#b3a3d4; --ink-faint:#7e6ba3;
+    --panel:#1d1338; --panel-2:#261a47; --line:#3a2b5e;
+    --inflow:#4ade80; --outflow:#fb7185; --agent:#c084fc; --neutral:#FCA326;
+    --mono:'JetBrains Mono','SF Mono',ui-monospace,monospace;
+    --sans:'Inter',-apple-system,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--night);color:var(--ink);font-family:var(--sans);overflow-x:hidden;}
+  .wrap{max-width:1180px;margin:0 auto;padding:26px 20px 72px;}
+  header{margin-bottom:14px;}
+  .crest{display:flex;align-items:center;gap:13px;}
+  .crest svg{flex:0 0 auto;filter:drop-shadow(0 2px 10px rgba(252,109,38,.45));}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gl-amber);}
+  h1{font-size:25px;font-weight:700;letter-spacing:-.01em;margin-top:2px;line-height:1.15;}
+  h1 span{color:var(--ink-dim);font-weight:400;}
+  .meta{font-family:var(--mono);font-size:12px;color:var(--ink-dim);margin-top:9px;line-height:1.6;}
+  .meta b{color:var(--gl-amber);font-weight:500;}
+  .town-frame{position:relative;margin-top:16px;border:1px solid var(--line);border-radius:16px;overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.5), inset 0 0 100px rgba(0,0,0,.4);}
+  .town-svg{display:block;width:100%;height:auto;touch-action:manipulation;}
+  .bldg{cursor:pointer;}
+  .bldg:hover{filter:drop-shadow(0 0 14px rgba(252,163,38,.55));}
+  .bldg.sel{filter:drop-shadow(0 0 16px rgba(192,132,252,.7));}
+  .plaque-bg{fill:#120a26;stroke:var(--line);stroke-width:1;}
+  .plaque-name{font-family:var(--mono);font-weight:700;fill:var(--ink);}
+  .plaque-val{font-family:var(--mono);font-weight:700;}
+  .hint{font-size:12.5px;color:var(--ink-faint);margin:14px 2px 0;font-style:italic;line-height:1.5;}
+  .inspector{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .insp-head{padding:17px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:14px;background:linear-gradient(90deg,rgba(110,73,203,.12),transparent);}
+  .insp-title{font-size:18px;font-weight:700;line-height:1.25;}
+  .kind-tag{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;margin-left:9px;vertical-align:middle;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;}
+  .kt-inflow{background:rgba(74,222,128,.14);color:var(--inflow);}
+  .kt-expand{background:rgba(252,163,38,.16);color:var(--gl-amber);}
+  .kt-outflow{background:rgba(251,113,133,.14);color:var(--outflow);}
+  .insp-flow{text-align:right;flex:0 0 auto;}
+  .insp-flow .v{font-family:var(--mono);font-size:21px;font-weight:700;}
+  .insp-flow .l{font-family:var(--mono);font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em;}
+  .insp-body{padding:19px 22px;display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .field .flabel{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px;}
+  .field .fval{font-size:13.5px;color:var(--ink);}
+  .field .fval.src{font-family:var(--mono);font-size:12px;color:var(--ink-dim);}
+  .meter{height:6px;background:var(--panel-2);border-radius:3px;overflow:hidden;margin-top:6px;border:1px solid var(--line);}
+  .meter>i{display:block;height:100%;border-radius:3px;}
+  .meter-cap{font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-top:4px;display:flex;justify-content:space-between;gap:6px;}
+  .verdict{grid-column:1/-1;border-top:1px solid var(--line);padding-top:15px;}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:600;padding:3px 10px;border-radius:5px;letter-spacing:.05em;}
+  .b-agent{background:rgba(192,132,252,.15);color:var(--agent);border:1px solid rgba(192,132,252,.32);}
+  .b-hybrid{background:rgba(252,163,38,.14);color:var(--neutral);border:1px solid rgba(252,163,38,.32);}
+  .b-human{background:rgba(179,163,212,.12);color:var(--ink-dim);border:1px solid var(--line);}
+  .verdict p{font-size:13.5px;color:var(--ink-dim);margin-top:8px;line-height:1.55;}
+  .verdict p b{color:var(--ink);font-weight:500;}
+  footer{margin-top:24px;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);line-height:1.7;}
+  footer b{color:var(--ink-dim);font-weight:500;}
+
+  /* ---------- MOBILE ---------- */
+  @media(max-width:760px){
+    .wrap{padding:18px 13px 56px;}
+    h1{font-size:20px;}
+    .meta{font-size:11px;}
+    .eyebrow{font-size:10px;}
+    .town-frame{border-radius:13px;}
+    .insp-head{padding:14px 15px;flex-direction:column;gap:8px;}
+    .insp-flow{text-align:left;}
+    .insp-title{font-size:16px;}
+    .insp-body{grid-template-columns:1fr;gap:15px;padding:15px;}
+    .meter-cap{font-size:9px;}
+    .hint{font-size:11.5px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="crest">
+      <svg width="36" height="36" viewBox="0 0 38 38" fill="none">
+        <path d="M19 3 L25 11 L31 7 L29 17 L34 22 L19 35 L4 22 L9 17 L7 7 L13 11 Z" fill="url(#cg)"/>
+        <path d="M19 35 L11 21 L19 26 L27 21 Z" fill="#E24329"/>
+        <circle cx="14.5" cy="18" r="1.7" fill="#160d2b"/><circle cx="23.5" cy="18" r="1.7" fill="#160d2b"/>
+        <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FCA326"/><stop offset="1" stop-color="#E24329"/></linearGradient></defs>
+      </svg>
+      <div>
+        <div class="eyebrow">GitLab World &middot; District 01</div>
+        <h1>The Finance District <span>&mdash; where the ARR is made</span></h1>
+      </div>
+    </div>
+    <div class="meta">Live from filings &middot; Q3 FY2026 &middot; ARR &asymp; <b>$936M</b> &middot; revenue <b>+25% YoY</b> &middot; DBNRR <b>119%</b></div>
+  </header>
+  <div class="town-frame">
+    <svg class="town-svg" id="town" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+  <p class="hint">&darr; Dusk over the Finance District. The tanuki carry real ARR along the stone roads. Tap any hall to zoom to the bottom &mdash; filing source, repeatability, and whether an agent should run it.</p>
+  <div class="inspector" id="inspector"></div>
+  <footer>
+    <b>Data provenance.</b> Revenue, DBNRR, RPO, customer counts &mdash; GitLab 8-K filings (Q3 FY2026, Dec 2 2025; FY2025 full year). Retention split 55/35/10 &mdash; Q1 FY2025 earnings call. New-business ARR &mdash; derived from cohort growth, flagged in-panel.<br>
+    <b>Townsfolk:</b> Bill Staples (CEO), James Shen (interim CFO, Q3 FY2026), Brian Robins (prior CFO) &mdash; per filings. Every structure maps to a sourced number; nothing on screen is decorative.
+  </footer>
+</div>
+<script>
+const NS="http://www.w3.org/2000/svg";
+const town=document.getElementById('town');
+const E=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;};
+
+/* ===== REAL DATA ENGINE (unchanged) ===== */
+const DATA={
+  new:{name:"New Business",kind:"inflow",kindLabel:"Inflow",flow:"+$184M",flowLabel:"new-logo ARR/yr (est.)",
+    what:"Net-new customers signing their first GitLab subscription \u2014 the only flow that widens the top of the funnel rather than growing existing accounts.",
+    number:"10,475 customers >$5K ARR (+10% YoY); 1,405 customers >$100K ARR (+23% YoY)",
+    source:"GitLab 8-K, Q3 FY2026 (ended Oct 31 2025)",
+    derived:"New-logo ARR is estimated from customer-count growth \u00d7 average ARR band \u2014 the filing reports customer counts, not a new-logo dollar line. Partially derived.",
+    repeat:45,repeatNote:"Mixed \u2014 lead scoring repeats, enterprise deal structuring is judgment-heavy",verdict:"hybrid",
+    verdictText:"Top-of-funnel qualification and lead routing are <b>highly automatable</b>. But the >$100K cohort grew 23% \u2014 those are enterprise deals where structuring and negotiation stay <b>human</b>. Agents handle the funnel's mouth; humans close its throat."},
+  expand:{name:"Seat Expansion",kind:"expand",kindLabel:"Expansion",flow:"~55%",flowLabel:"of net retention",
+    what:"Existing customers adding more paid seats \u2014 the single largest driver of GitLab's expansion as more developers onboard onto existing contracts.",
+    number:"\u224855% of the 119% DBNRR (55% seats / 35% price / 10% tier)",
+    source:"GitLab Q1 FY2025 earnings call",derived:null,
+    repeat:80,repeatNote:"Highly repeatable \u2014 usage signals predict seat-add need",verdict:"agent",
+    verdictText:"The <b>clearest agent win</b> in the district. Usage telemetry (active devs vs. licensed seats) is a repeatable signal; an agent can detect over-utilization, trigger expansion, and forecast seat growth per account continuously \u2014 exactly the manual FP&A work a Duo-style agent could absorb."},
+  price:{name:"Pricing Uplift",kind:"expand",kindLabel:"Expansion",flow:"~35%",flowLabel:"of net retention",
+    what:"Revenue from list-price increases and contractual uplifts on renewal \u2014 customers paying more for the same tier.",
+    number:"\u224835% of the 119% DBNRR",source:"GitLab Q1 FY2025 earnings call",derived:null,
+    repeat:55,repeatNote:"Modeling repeats; the pricing decision itself is strategic",verdict:"hybrid",
+    verdictText:"Elasticity modeling and renewal-uplift simulation are <b>automatable</b> across the base. But the <b>decision</b> \u2014 how hard to push uplift against churn risk \u2014 is strategic and competitive. Agent informs; human decides."},
+  tier:{name:"Tier Movement",kind:"expand",kindLabel:"Expansion",flow:"~10%",flowLabel:"of net retention",
+    what:"Customers upgrading between tiers (Premium \u2192 Ultimate), often pulled by features like security or Duo AI.",
+    number:"\u224810% of the 119% DBNRR",source:"GitLab Q1 FY2025 earnings call",derived:null,
+    repeat:70,repeatNote:"Feature-gating signals make upgrade propensity predictable",verdict:"agent",
+    verdictText:"Upgrade propensity is <b>highly predictable</b> from feature-usage (a customer repeatedly hitting an Ultimate-gated feature is a signal). An agent can score upgrade-readiness across the whole base and prioritize outreach \u2014 repeatable, data-rich, low-judgment."},
+  churn:{name:"Churn & Contraction",kind:"outflow",kindLabel:"Outflow",flow:"the gap",flowLabel:"gross \u2192 119% net",
+    what:"ARR leaving: cancellations plus seat/tier downgrades \u2014 the reason net retention is 119% rather than the higher gross expansion figure.",
+    number:"DBNRR slide: 129%\u2192126\u2192123\u2192122\u2192121\u2192119% (Q1 FY25 \u2192 Q3 FY26): a real 10-pt decline",
+    source:"GitLab 8-K filings, Q1 FY2025 \u2192 Q3 FY2026",
+    derived:"Churn's dollar value isn't separately reported \u2014 it's the implied gap between gross expansion and the 119% net. Derived, labeled.",
+    repeat:65,repeatNote:"Churn prediction repeats; saving an account is human",verdict:"hybrid",
+    verdictText:"The 6-quarter slide from 129% to 119% is the district's most important story \u2014 <b>contraction is gaining on expansion</b>. Prediction is automatable (engagement decay is an early signal). But <b>save motions</b> on at-risk enterprise accounts need human relationship work. Agent flags; human saves."},
+  cfo:{name:"The Treasury \u2014 CFO's Office",kind:"treasury",kindLabel:"Leadership",flow:"J. Shen",flowLabel:"interim CFO",
+    what:"The grand hall orchestrating the whole district. The seat changed mid-year \u2014 a real signal of finance-function transition.",
+    number:"Brian Robins (CFO \u2192 Q1 FY2026) \u2192 James Shen (interim CFO, named Q3 FY2026)",
+    source:"GitLab 8-K filings, Q1 & Q3 FY2026",derived:null,
+    repeat:15,repeatNote:"Capital allocation & narrative \u2014 least automatable work here",verdict:"human",
+    verdictText:"The <b>human floor</b>. Capital allocation, investor narrative, and the judgment to weigh a declining DBNRR against 25% growth are the strategic-finance calls agents can't own. This is where every other building's agent-generated signal gets <b>synthesized into decisions</b> \u2014 the real job a strategic-finance hire is evaluated for."}
+};
+const ROOF={inflow:["#34d878","#1c7a44"],outflow:["#fb7185","#a82f48"],expand:["#FCA326","#c84718"],treasury:["#8C4BFF","#3a1675"]};
+const WALL_L="#241546", WALL_R="#2f1c57";
+
+/* ===== LAYOUTS ===== */
+const DESKTOP={
+  TW:72,TH:36,GX:14,GY:14,fs:1,moonR:62,plaqueFull:true,treeR:1,
+  B:{ cfo:{ax:6,ay:6,w:2,d:2,wall:92,roof:78,type:"treasury"},
+      new:{ax:1,ay:4,w:2,d:2,wall:66,roof:52,type:"inflow"},
+      expand:{ax:10,ay:2,w:2,d:2,wall:66,roof:52,type:"expand"},
+      price:{ax:11,ay:6,w:2,d:2,wall:60,roof:46,type:"expand"},
+      tier:{ax:10,ay:10,w:2,d:2,wall:60,roof:46,type:"expand"},
+      churn:{ax:1,ay:10,w:2,d:2,wall:66,roof:52,type:"outflow"} },
+  trees:[[3,1],[5,2],[8,5],[4,7],[7,9],[12,4],[3,12],[12,12],[6,3],[9,7],[2,7],[13,8],[5,11],[8,12]],
+  lamps:[[5,5],[8,8],[3,8],[9,4],[6,11],[11,9]],
+  lift:{cfo:54,expand:0,price:30,tier:8,new:14,churn:0}
+};
+const MOBILE={
+  TW:62,TH:31,GX:9,GY:13,fs:2.05,moonR:46,plaqueFull:false,treeR:.92,
+  B:{ cfo:{ax:3,ay:6,w:2,d:2,wall:88,roof:70,type:"treasury"},
+      new:{ax:0,ay:0,w:2,d:2,wall:62,roof:48,type:"inflow"},
+      expand:{ax:6,ay:1,w:2,d:2,wall:62,roof:48,type:"expand"},
+      price:{ax:7,ay:6,w:2,d:2,wall:58,roof:44,type:"expand"},
+      tier:{ax:6,ay:11,w:2,d:2,wall:58,roof:44,type:"expand"},
+      churn:{ax:0,ay:11,w:2,d:2,wall:62,roof:48,type:"outflow"} },
+  trees:[[7,3],[2,4],[7,7],[3,8],[7,11],[2,12]],
+  lamps:[[2,3],[5,5],[2,7]],
+  lift:{cfo:64,expand:0,price:38,tier:0,new:0,churn:0}
+};
+
+let L, TW,TH,GX,GY,fs, B, ROADS, pathTiles, bTiles, routesScreen;
+const iso=(x,y)=>({x:(x-y)*TW/2, y:(x+y)*TH/2});
+
+function setup(layout){
+  L=layout; TW=L.TW;TH=L.TH;GX=L.GX;GY=L.GY;fs=L.fs;B=L.B;
+  ROADS=[
+    {id:"new",from:"new",to:"cfo",color:"#4ade80",dir:1},
+    {id:"expand",from:"expand",to:"cfo",color:"#FCA326",dir:1},
+    {id:"price",from:"price",to:"cfo",color:"#FCA326",dir:1},
+    {id:"tier",from:"tier",to:"cfo",color:"#FCA326",dir:1},
+    {id:"churn",from:"cfo",to:"churn",color:"#fb7185",dir:1}
+  ];
+  const ct=b=>({x:b.ax+b.w/2,y:b.ay+b.d/2});
+  const route=(fb,tb)=>{const a=ct(fb),b=ct(tb);const pts=[{x:a.x,y:a.y}];let cx=a.x,cy=a.y;
+    const sx=Math.sign(b.x-cx);while(Math.abs(cx-b.x)>0.01){cx+=sx*0.5;pts.push({x:cx,y:cy});}
+    const sy=Math.sign(b.y-cy);while(Math.abs(cy-b.y)>0.01){cy+=sy*0.5;pts.push({x:cx,y:cy});}return pts;};
+  pathTiles=new Set();routesScreen={};
+  ROADS.forEach(r=>{const pts=route(B[r.from],B[r.to]);pts.forEach(p=>pathTiles.add(`${Math.floor(p.x)},${Math.floor(p.y)}`));routesScreen[r.id]=pts.map(p=>iso(p.x,p.y));});
+  bTiles=new Set();
+  for(const k in B){const b=B[k];for(let i=0;i<b.w;i++)for(let j=0;j<b.d;j++)bTiles.add(`${b.ax+i},${b.ay+j}`);}
+}
+
+function bilerp(p0,p1,p2,p3,u,v){const t={x:p0.x+(p1.x-p0.x)*u,y:p0.y+(p1.y-p0.y)*u};const b={x:p3.x+(p2.x-p3.x)*u,y:p3.y+(p2.y-p3.y)*u};return{x:t.x+(b.x-t.x)*v,y:t.y+(b.y-t.y)*v};}
+
+function build(){
+  while(town.firstChild)town.removeChild(town.firstChild);
+  const defs=E('defs',{},town);
+  const lg=(id,stops,vert=true)=>{const g=E('linearGradient',{id,x1:0,y1:0,x2:vert?0:1,y2:vert?1:0},defs);stops.forEach(s=>E('stop',{offset:s[0],'stop-color':s[1]},g));};
+  lg('sky',[[0,'#2d1b52'],[0.5,'#3a2068'],[1,'#6b3a5e']]);
+  lg('grass',[[0,'#2a1a4a'],[1,'#1c1233']]);lg('grass2',[[0,'#30205a'],[1,'#22153f']]);lg('stone',[[0,'#4a3a6b'],[1,'#332451']]);
+  for(const k in ROOF){lg('roofL_'+k,[[0,ROOF[k][0]],[1,ROOF[k][1]]]);}
+  const moonG=E('radialGradient',{id:'moonG',cx:'50%',cy:'50%',r:'50%'},defs);
+  E('stop',{offset:0,'stop-color':'#fff7e8'},moonG);E('stop',{offset:.7,'stop-color':'#ffe3b0'},moonG);E('stop',{offset:1,'stop-color':'rgba(255,227,176,0)'},moonG);
+  const vg=E('radialGradient',{id:'vig',cx:'50%',cy:'46%',r:'62%'},defs);
+  E('stop',{offset:0,'stop-color':'rgba(0,0,0,0)'},vg);E('stop',{offset:.72,'stop-color':'rgba(0,0,0,0)'},vg);E('stop',{offset:1,'stop-color':'rgba(10,5,22,0.55)'},vg);
+  const lampG=E('radialGradient',{id:'lampG',cx:'50%',cy:'50%',r:'50%'},defs);
+  E('stop',{offset:0,'stop-color':'rgba(252,163,38,0.45)'},lampG);E('stop',{offset:1,'stop-color':'rgba(252,163,38,0)'},lampG);
+
+  /* ---- compute viewBox from layout extents ---- */
+  const minX=iso(0,GY).x, maxX=iso(GX,0).x;
+  const groundTop=iso(0,0).y, groundBot=iso(GX,GY).y;
+  let topMost=groundTop;
+  for(const k in B){const b=B[k];const c=iso(b.ax+b.w/2,b.ay+b.d/2);const ap=c.y-b.wall-b.roof-34*fs;if(ap<topMost)topMost=ap;}
+  const padX=46*fs, padTop=46*fs, padBot=24*fs;
+  const vbX=minX-padX, vbY=topMost-padTop, vbW=(maxX-minX)+padX*2, vbH=(groundBot-topMost)+padTop+padBot;
+  town.setAttribute('viewBox',`${vbX} ${vbY} ${vbW} ${vbH}`);
+
+  /* ---- sky ---- */
+  E('rect',{x:vbX,y:vbY,width:vbW,height:vbH,fill:'url(#sky)'},town);
+  const sky=E('g',{},town);
+  const starBandH=Math.min(vbH*0.42, groundTop-vbY+40);
+  for(let i=0;i<46;i++){const s=E('circle',{cx:vbX+Math.random()*vbW,cy:vbY+Math.random()*starBandH,r:Math.random()*1.3+.3,fill:'#fff',opacity:.2},sky);
+    E('animate',{attributeName:'opacity',values:`.15;.6;.15`,dur:(2+Math.random()*4)+'s',repeatCount:'indefinite',begin:(Math.random()*3)+'s'},s);}
+  const moonX=vbX+vbW-L.moonR*1.5, moonY=vbY+L.moonR*1.2;
+  E('circle',{cx:moonX,cy:moonY,r:L.moonR,fill:'url(#moonG)'},town);
+  E('circle',{cx:moonX,cy:moonY,r:L.moonR*0.42,fill:'#fff7e8',opacity:.95},town);
+  E('circle',{cx:moonX+L.moonR*0.2,cy:moonY-L.moonR*0.1,r:L.moonR*0.42,fill:'#3a2068',opacity:.35},town);
+  // faint giant tanuki constellation centered on town
+  const cc={x:(minX+maxX)/2,y:(groundTop+groundBot)/2};const cs=(maxX-minX)*0.34;
+  E('path',{d:`M${cc.x} ${cc.y-cs} L${cc.x+cs*.45} ${cc.y-cs*.4} L${cc.x+cs*.9} ${cc.y-cs*.7} L${cc.x+cs*.55} ${cc.y+cs*.2} L${cc.x+cs} ${cc.y+cs*.55} L${cc.x} ${cc.y+cs*1.05} L${cc.x-cs} ${cc.y+cs*.55} L${cc.x-cs*.55} ${cc.y+cs*.2} L${cc.x-cs*.9} ${cc.y-cs*.7} L${cc.x-cs*.45} ${cc.y-cs*.4} Z`,fill:'none',stroke:'#FC6D26',opacity:.05,'stroke-width':2},sky);
+
+  /* ---- ground tiles ---- */
+  const ground=E('g',{},town);
+  for(let sum=0;sum<=GX+GY;sum++){for(let x=0;x<GX;x++){const y=sum-x;if(y<0||y>=GY)continue;
+    const key=`${x},${y}`;if(bTiles.has(key))continue;
+    const p0=iso(x,y),p1=iso(x+1,y),p2=iso(x+1,y+1),p3=iso(x,y+1);
+    const isPath=pathTiles.has(key);
+    const fill=isPath?'url(#stone)':((x+y)%2?'url(#grass)':'url(#grass2)');
+    E('path',{d:`M${p0.x} ${p0.y} L${p1.x} ${p1.y} L${p2.x} ${p2.y} L${p3.x} ${p3.y} Z`,fill,stroke:isPath?'#241a3d':'rgba(120,90,180,0.06)','stroke-width':1},ground);
+  }}
+  /* road ribbons */
+  const ribbon=E('g',{},town);
+  ROADS.forEach(r=>{const pts=routesScreen[r.id];const d="M"+pts.map(p=>`${p.x} ${p.y}`).join(" L ");
+    E('path',{d,fill:'none',stroke:'#5a4780','stroke-width':9*Math.sqrt(fs),'stroke-linecap':'round','stroke-linejoin':'round',opacity:.6},ribbon);
+    E('path',{d,fill:'none',stroke:r.color,'stroke-width':2,'stroke-linecap':'round','stroke-dasharray':'1 10',opacity:.5},ribbon);});
+
+  /* ---- scene objects (depth sorted) ---- */
+  const scene=[];
+  function makeBuilding(id){
+    const b=B[id], d=DATA[id];
+    const N=iso(b.ax,b.ay),Eo=iso(b.ax+b.w,b.ay),S=iso(b.ax+b.w,b.ay+b.d),W=iso(b.ax,b.ay+b.d);
+    const C={x:(N.x+S.x)/2,y:(N.y+S.y)/2};const wall=b.wall,roofH=b.roof,ex=8,ey=4;
+    const eE={x:Eo.x+ex,y:Eo.y},eS={x:S.x,y:S.y+ey},eW={x:W.x-ex,y:W.y},eN={x:N.x,y:N.y-ey};
+    const rN={x:eN.x,y:eN.y-wall},rE={x:eE.x,y:eE.y-wall},rS={x:eS.x,y:eS.y-wall},rW={x:eW.x,y:eW.y-wall};
+    const tN={x:N.x,y:N.y-wall},tE={x:Eo.x,y:Eo.y-wall},tS={x:S.x,y:S.y-wall},tW={x:W.x,y:W.y-wall};
+    const depth=(b.ax+b.w)+(b.ay+b.d);
+    scene.push({depth,draw:(layer)=>{
+      const g=E('g',{class:'bldg','data-id':id},layer);
+      E('ellipse',{cx:C.x,cy:S.y+6,rx:(b.w*TW/2)+14,ry:(b.d*TH/2)+10,fill:'rgba(0,0,0,0.38)'},g);
+      E('path',{d:`M${tW.x} ${tW.y} L${tS.x} ${tS.y} L${S.x} ${S.y} L${W.x} ${W.y} Z`,fill:WALL_L,stroke:'#160d2b','stroke-width':1},g);
+      E('path',{d:`M${tS.x} ${tS.y} L${tE.x} ${tE.y} L${Eo.x} ${Eo.y} L${S.x} ${S.y} Z`,fill:WALL_R,stroke:'#160d2b','stroke-width':1},g);
+      const wp0=tS,wp1=tE,wp2=Eo,wp3=S;
+      [[0.32,0.42],[0.68,0.42]].forEach(([u,v])=>{const c=bilerp(wp0,wp1,wp2,wp3,u,v);E('rect',{x:c.x-6,y:c.y-7,width:12,height:13,rx:1.5,fill:'#ffd98a',opacity:.92},g);});
+      {const c=bilerp(tW,tS,S,W,0.5,0.42);E('rect',{x:c.x-5,y:c.y-6,width:11,height:12,rx:1.5,fill:'#caa45a',opacity:.55},g);}
+      const dc=bilerp(wp0,wp1,wp2,wp3,0.5,0.84);
+      E('rect',{x:dc.x-7,y:dc.y-13,width:14,height:16,rx:2,fill:'#0e0820'},g);
+      E('rect',{x:dc.x-7,y:dc.y-13,width:14,height:3,rx:1,fill:ROOF[b.type][0],opacity:.7},g);
+      const rk=b.type;
+      const midNE={x:(rN.x+rE.x)/2,y:(rN.y+rE.y)/2},midWS={x:(rW.x+rS.x)/2,y:(rW.y+rS.y)/2};
+      const ridgeA={x:midNE.x,y:midNE.y-roofH},ridgeB={x:midWS.x,y:midWS.y-roofH};
+      E('path',{d:`M${rS.x} ${rS.y} L${rE.x} ${rE.y} L${ridgeA.x} ${ridgeA.y} L${ridgeB.x} ${ridgeB.y} Z`,fill:'url(#roofL_'+rk+')',stroke:'#160d2b','stroke-width':.8},g);
+      E('path',{d:`M${rW.x} ${rW.y} L${rS.x} ${rS.y} L${ridgeB.x} ${ridgeB.y} Z`,fill:ROOF[rk][1],stroke:'#160d2b','stroke-width':.8},g);
+      E('path',{d:`M${rN.x} ${rN.y} L${rW.x} ${rW.y} L${ridgeB.x} ${ridgeB.y} L${ridgeA.x} ${ridgeA.y} Z`,fill:ROOF[rk][1],opacity:.8},g);
+      E('path',{d:`M${rS.x} ${rS.y} L${ridgeB.x} ${ridgeB.y} L${ridgeA.x} ${ridgeA.y} Z`,fill:ROOF[rk][0],opacity:.5,stroke:'#160d2b','stroke-width':.6},g);
+      E('line',{x1:ridgeA.x,y1:ridgeA.y,x2:ridgeB.x,y2:ridgeB.y,stroke:'#fff',opacity:.22,'stroke-width':2},g);
+      E('line',{x1:rW.x,y1:rW.y,x2:rS.x,y2:rS.y,stroke:'#160d2b',opacity:.5,'stroke-width':2},g);
+      E('line',{x1:rS.x,y1:rS.y,x2:rE.x,y2:rE.y,stroke:'#160d2b',opacity:.5,'stroke-width':2},g);
+      if(b.type==='treasury'){const peak={x:(ridgeA.x+ridgeB.x)/2,y:Math.min(ridgeA.y,ridgeB.y)-14};
+        E('rect',{x:peak.x-1.5,y:peak.y,width:3,height:16,fill:'#2a1e44'},g);
+        E('path',{d:`M${peak.x} ${peak.y-4} l5 4 l5 -3 l-1.5 8 l-8.5 6 l-8.5 -6 l-1.5 -8 l5 3 Z`,fill:'#FCA326'},g);}
+      // plaque
+      const nameSize=11*Math.min(fs,1.55), valSize=10.5*Math.min(fs,1.5);
+      const valText=L.plaqueFull?(d.flow+' \u00b7 '+d.flowLabel):d.flow;
+      const nm=d.name.replace(/ \u2014 .*/,'');
+      const pw=Math.max(nm.length*nameSize*0.62, valText.length*valSize*0.6)+16;
+      const apexY=Math.min(ridgeA.y,ridgeB.y);
+      const lift=((L.lift&&L.lift[id])||0);
+      const px=C.x-pw/2, py=apexY-20-lift-(nameSize+valSize+8);
+      const ph=nameSize+valSize+12;
+      if(lift>6){E('line',{x1:C.x,y1:py+ph,x2:C.x,y2:apexY-6,stroke:'#3a2b5e','stroke-width':1.5,opacity:.7,'stroke-dasharray':'2 3'},g);}
+      E('rect',{x:px,y:py,width:pw,height:ph,rx:6,class:'plaque-bg'},g);
+      E('text',{x:C.x,y:py+nameSize+2,'text-anchor':'middle',class:'plaque-name',style:`font-size:${nameSize}px`},g).textContent=nm;
+      const vt=E('text',{x:C.x,y:py+nameSize+valSize+5,'text-anchor':'middle',class:'plaque-val',style:`font-size:${valSize}px`,
+        fill:b.type==='inflow'?'#4ade80':b.type==='outflow'?'#fb7185':b.type==='treasury'?'#8C4BFF':'#FCA326'},g);
+      vt.textContent=valText;
+      g.addEventListener('click',()=>render(id));
+    }});
+  }
+  Object.keys(B).forEach(makeBuilding);
+  L.trees.forEach(([x,y])=>{const key=`${x},${y}`;if(bTiles.has(key)||pathTiles.has(key))return;const g0=iso(x+.5,y+.5);const tr=L.treeR;
+    scene.push({depth:x+y+0.5,draw:(layer)=>{const g=E('g',{},layer);
+      E('ellipse',{cx:g0.x,cy:g0.y+2,rx:15*tr,ry:7*tr,fill:'rgba(0,0,0,0.32)'},g);
+      E('rect',{x:g0.x-3*tr,y:g0.y-20*tr,width:6*tr,height:22*tr,rx:2,fill:'#3b2a1c'},g);
+      E('circle',{cx:g0.x,cy:g0.y-30*tr,r:16*tr,fill:'#2c6b3f'},g);
+      E('circle',{cx:g0.x-9*tr,cy:g0.y-24*tr,r:12*tr,fill:'#245c35'},g);
+      E('circle',{cx:g0.x+9*tr,cy:g0.y-25*tr,r:12*tr,fill:'#358a4d'},g);
+      E('circle',{cx:g0.x+5*tr,cy:g0.y-34*tr,r:9*tr,fill:'#3f9c57'},g);}});});
+  L.lamps.forEach(([x,y])=>{const g0=iso(x+.5,y+.5);
+    scene.push({depth:x+y+0.6,draw:(layer)=>{const g=E('g',{},layer);
+      E('ellipse',{cx:g0.x,cy:g0.y+22,rx:34,ry:16,fill:'url(#lampG)'},g);
+      E('rect',{x:g0.x-1.5,y:g0.y-30,width:3,height:32,fill:'#2a1e44'},g);
+      E('circle',{cx:g0.x,cy:g0.y-33,r:5,fill:'#FCA326'},g);
+      const fl=E('circle',{cx:g0.x,cy:g0.y-33,r:8,fill:'#FCA326',opacity:.35},g);
+      E('animate',{attributeName:'opacity',values:'.25;.5;.25',dur:'3s',repeatCount:'indefinite'},fl);}});});
+  const sceneLayer=E('g',{},town);
+  scene.sort((a,b)=>a.depth-b.depth).forEach(o=>o.draw(sceneLayer));
+
+  /* walkers */
+  const wl=E('g',{},town);
+  ROADS.forEach(r=>{const pts=routesScreen[r.id];const d="M"+pts.map(p=>`${p.x} ${p.y-8}`).join(" L ");const n=r.id==='churn'?2:3;
+    for(let i=0;i<n;i++){const g=E('g',{},wl);
+      E('ellipse',{cx:0,cy:5,rx:6,ry:2.5,fill:'rgba(0,0,0,0.3)'},g);
+      E('path',{d:"M0 -8 L4 -3 L8 -6 L6.5 1 L0 7 L-6.5 1 L-8 -6 L-4 -3 Z",fill:r.color},g);
+      E('circle',{cx:-2.4,cy:-2,r:1,fill:'#160d2b'},g);E('circle',{cx:2.4,cy:-2,r:1,fill:'#160d2b'},g);
+      const coin=E('circle',{cx:0,cy:-13,r:2.6,fill:'#ffd98a'},g);
+      E('animate',{attributeName:'opacity',values:'.7;1;.7',dur:'1.2s',repeatCount:'indefinite'},coin);
+      const am=E('animateMotion',{dur:(6+i*1.1)+'s',repeatCount:'indefinite',begin:(i*1.5)+'s',path:d},g);
+      if(r.dir<0){am.setAttribute('keyPoints','1;0');am.setAttribute('keyTimes','0;1');am.setAttribute('calcMode','linear');}}});
+
+  /* fireflies */
+  const fire=E('g',{},town);
+  for(let i=0;i<14;i++){const x=vbX+vbW*0.12+Math.random()*vbW*0.76, y=groundTop+Math.random()*(groundBot-groundTop)*0.85;
+    const f=E('circle',{cx:x,cy:y,r:1.6,fill:'#FCA326'},fire);
+    E('animate',{attributeName:'opacity',values:'0;.9;0',dur:(2.5+Math.random()*3)+'s',repeatCount:'indefinite',begin:(Math.random()*4)+'s'},f);
+    E('animate',{attributeName:'cy',values:`${y};${y-22};${y}`,dur:(4+Math.random()*3)+'s',repeatCount:'indefinite'},f);}
+
+  E('rect',{x:vbX,y:vbY,width:vbW,height:vbH,fill:'url(#vig)','pointer-events':'none'},town);
+}
+
+/* ===== INSPECTOR ===== */
+const insp=document.getElementById('inspector');
+const ktClass=k=>k==='inflow'?'kt-inflow':k==='outflow'?'kt-outflow':'kt-expand';
+const badgeClass=v=>v==='agent'?'b-agent':v==='hybrid'?'b-hybrid':'b-human';
+const badgeLabel=v=>v==='agent'?'\u25c6 AGENT-SUITABLE':v==='hybrid'?'\u25d1 HYBRID':'\u25cb HUMAN-CRITICAL';
+const meterColor=r=>r>=70?'#c084fc':r>=40?'#FCA326':'#b3a3d4';
+function render(id){
+  const d=DATA[id];
+  document.querySelectorAll('.bldg').forEach(b=>b.classList.toggle('sel',b.dataset.id===id));
+  const fc=d.kind==='inflow'?'#4ade80':d.kind==='outflow'?'#fb7185':'#FCA326';
+  insp.innerHTML=`
+    <div class="insp-head">
+      <div><div class="insp-title">${d.name}<span class="kind-tag ${ktClass(d.kind)}">${d.kindLabel}</span></div></div>
+      <div class="insp-flow"><div class="v" style="color:${fc}">${d.flow}</div><div class="l">${d.flowLabel}</div></div>
+    </div>
+    <div class="insp-body">
+      <div class="field" style="grid-column:1/-1"><div class="flabel">What this process is</div><div class="fval">${d.what}</div></div>
+      <div class="field"><div class="flabel">The real number</div><div class="fval">${d.number}</div></div>
+      <div class="field"><div class="flabel">Filing source</div><div class="fval src">${d.source}</div>
+        ${d.derived?`<div class="fval src" style="color:#fb7185;margin-top:8px">\u26a0 Derived \u2014 ${d.derived}</div>`:''}</div>
+      <div class="field" style="grid-column:1/-1"><div class="flabel">Repeatability of the underlying work</div>
+        <div class="meter"><i style="width:${d.repeat}%;background:${meterColor(d.repeat)}"></i></div>
+        <div class="meter-cap"><span>judgment-heavy</span><span>${d.repeat}% repeatable</span><span>fully repeatable</span></div>
+        <div class="fval" style="margin-top:7px;color:#b3a3d4;font-size:12.5px">${d.repeatNote}</div></div>
+      <div class="verdict"><span class="badge ${badgeClass(d.verdict)}">${badgeLabel(d.verdict)}</span><p>${d.verdictText}</p></div>
+    </div>`;
+}
+
+/* ===== RESPONSIVE BOOT ===== */
+let curMobile=null;
+function boot(){
+  const m=window.matchMedia('(max-width:760px)').matches;
+  if(m===curMobile)return;
+  curMobile=m;
+  setup(m?MOBILE:DESKTOP);
+  build();
+  render('churn');
+}
+boot();
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(boot,200);});
+</script>
+</body>
+</html>
